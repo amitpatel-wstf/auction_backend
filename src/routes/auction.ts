@@ -2,108 +2,90 @@ import express, { NextFunction } from "express";
 import Auction from "../models/Auction";
 import jwt from "jsonwebtoken";
 import Bids from "../models/bids";
+import { tokenExtractor } from "../middlewares/tokenExtractor";
+import { createAuction, createBid, getAuctions } from "../controllers/auction";
+import { responseMessage } from "../types/responseMessage";
+import { statusCode } from "../types/statusCode";
+import { auctionType, bidType } from "../types/auction";
+import { setUserId } from "../middlewares/setUserId";
+import { tokenValidator } from "../middlewares/tokenValidator";
 
 const app = express.Router();
-
-async function tokenExtractor(req: any, res: any, next: any) {
-  try {
-    const { token }: { token: string } = req.body;
-    const response: string | jwt.JwtPayload = jwt.verify(
-      token,
-      process.env.SECRET_KEY || ""
-    );
-    const decoded = jwt.decode(token);
-    // @ts-ignore
-    req.body.id = decoded.id;
-    next();
-  } catch (error) {
-    console.log(error);
-    return res.status(500).json({ status: false, message: "Invalid token" });
-  }
-}
+//middaleware
+app.use(tokenValidator);
 
 // Get all auctions
 app.get("/", async (req, res) => {
   try {
-    const auctions = await Auction.find();
-    res.json(auctions);
+    const auctions = await getAuctions();
+    res.status(statusCode.OK).json({
+      auctions: auctions,
+      status: true,
+      message: responseMessage.getData,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server Error" });
+    res
+      .status(statusCode.InternalServerError)
+      .json({ status: false, message: responseMessage.InternalServerError });
   }
 });
 
 // Create an auction
 app.post("/", async (req, res) => {
   try {
-    const { itemName, startTime, endTime, startPrice } = req.body;
-    const newAuction = new Auction({
+    const { itemName, startTime, endTime, startPrice }: auctionType = req.body;
+    const auction = await createAuction(
       itemName,
       startTime,
       endTime,
-      startPrice,
-      currentPrice: startPrice,
+      startPrice
+    );
+    res.status(statusCode.Created).json({
+      auction: auction,
+      status: true,
+      message: responseMessage.auctionCreated,
     });
-    const auction = await newAuction.save();
-    res.status(201).json(auction);
   } catch (error) {
-    res.status(500).json({ message: "Server Error" });
+    res
+      .status(statusCode.InternalServerError)
+      .json({ status: false, message: responseMessage.InternalServerError });
   }
 });
-
-
 
 app.post("/placebid", tokenExtractor, async (req, res) => {
   try {
-    const {
-      artName,
-      description,
-      currentBid,
-      artist,
-      id,
-    }: {
-      artName: string;
-      description: string;
-      currentBid: number;
-      artist: string;
-      id: string;
-    } = req.body;
-    const bid = await Bids.create({
-      artName: artName,
-      description: description,
-      artist: artist,
-      userId: id,
-      currentBid: currentBid,
-    });
+    const { artName, description, currentBid, artist, id }: bidType = req.body;
+    const bid = await createBid(artName, description, artist, id, currentBid);
 
     res
-      .status(200)
-      .json({ message: "Bid placed successfully...!", status: true, bid: bid });
+      .status(statusCode.OK)
+      .json({ message: responseMessage.bidPlaced, status: true, bid: bid });
   } catch (error) {
     console.log(error);
     res
-      .status(500)
-      .json({ status: false, message: "Error while placing bid...!" });
+      .status(statusCode.InternalServerError)
+      .json({ status: false, message: responseMessage.InternalServerError });
   }
 });
 
-app.get("/bids/:id",async(req,res)=>{
+app.get("/bids/:id", setUserId, async (req, res) => {
   try {
-    const token = req.params.id;
-    // @ts-ignore
-    const decoded : string | jwt.JwtPayload  = jwt.decode(token)
-    // @ts-ignore
-    const userId = decoded.id;
+    const userId = req.body.userId;
     const bids = await Bids.find({ userId: userId });
-    res.json({ bids: bids, status: true, message: "Bid List" });
+    res
+      .status(statusCode.OK)
+      .json({ bids: bids, status: true, message: responseMessage.getData });
   } catch (error) {
-    res.status(500).json({status:false,message:"Error while getting the bids...!"})
+    res
+      .status(statusCode.InternalServerError)
+      .json({ status: false, message: responseMessage.InternalServerError });
   }
-})
+});
 
 // global error catch
 app.use((err: any, req: any, res: any, next: any) => {
-  res.status(err.status || 500);
-  res.json({ message: err.message, error: err });
+  res.status(statusCode.InternalServerError);
+  res.json({ message: responseMessage.InternalServerError, status: false });
 });
 
 export default app;

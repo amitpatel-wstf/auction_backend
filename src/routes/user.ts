@@ -1,100 +1,123 @@
 import express from "express";
 import User from "../models/Users";
-import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import {
+  registerUser,
+  getUsers,
+  updateUserById,
+  getUserByEmailAndPassword,
+  deleteUserById,
+} from "../controllers/user";
+import { responseMessage } from "../types/responseMessage";
+import { statusCode } from "../types/statusCode";
+import {
+  loginUserType,
+  registerUserType,
+  updateUserType,
+  UserType,
+} from "../types/user";
+import { createJWTToken } from "../helper/createJWTToken";
 
 dotenv.config();
-const secretKey = process.env.SECRET_KEY || "";
 const app = express.Router();
 
 app.get("/", async (req, res) => {
   try {
-    res.status(200).json({ status: true, messeage: "Route working...!" });
+    res
+      .status(statusCode.OK)
+      .json({ status: true, messeage: responseMessage.RouteWorking });
   } catch (error) {
-    res.status(500).json({ status: false, message: "Error in Routes" });
+    res
+      .status(statusCode.InternalServerError)
+      .json({ status: false, message: responseMessage.InternalServerError });
   }
 });
 app.get("/users", async (req, res) => {
   try {
-    const users = await User.find();
-    res.json({users:users,status:true,message:"User List"});
+    const users = await getUsers();
+    res
+      .status(statusCode.OK)
+      .json({ users: users, status: true, message: responseMessage.UserList });
   } catch (error) {
     res
-      .status(500)
-      .json({ status: false, message: "Error while getting the users" });
+      .status(statusCode.InternalServerError)
+      .json({ status: false, message: responseMessage.InternalServerError });
   }
 });
 // Create a user
 app.post("/register", async (req, res) => {
   try {
-    const {
-      username,
-      email,
-      password,
-    }: { username: string; email: string; password: string } = req.body;
-    const user = await User.create({
-      username: username,
-      email: email,
-      password: password,
-    });
-    const token = jwt.sign({ id: user._id }, secretKey, { expiresIn: "15d" });
-    res.status(201).json({
+    const { username, email, password }: registerUserType = req.body;
+    const user = await registerUser(username, email, password);
+    const token = createJWTToken(user._id);
+    res.status(statusCode.Created).json({
       user: user,
       status: true,
       token: token,
-      message: "User created successfully!",
+      message: responseMessage.UserCreated,
     });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+    res
+      .status(statusCode.InternalServerError)
+      .json({ status: false, message: responseMessage.InternalServerError });
   }
 });
 
 app.put("/update", async (req, res) => {
   try {
-    const { id, username, email, password } = req.body;
-    const user = await User.findByIdAndUpdate(
-      id,
-      { username, email, password },
-      { new: true }
-    );
-    res.json({
+    const { id, username, email, password }: updateUserType = req.body;
+    const user = await updateUserById(id, username, email, password);
+    res.status(statusCode.Accepted).json({
       user: user,
       status: true,
-      message: "User updated successfully!",
+      message: responseMessage.UserUpdated,
     });
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error });
+    res
+      .status(statusCode.InternalServerError)
+      .json({ message: responseMessage.InternalServerError, error });
   }
 });
 
 app.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
-    console.log("Email :: ", email, "Password :: ", password);
-    const user = await User.findOne({ email: email, password: password });
+    const { email, password }: loginUserType = req.body;
+    const user: UserType | any = await getUserByEmailAndPassword(
+      email,
+      password
+    );
     if (!user) {
-      return res.status(401).json({ message: "User not found!" });
+      return res
+        .status(statusCode.NoContent)
+        .json({ message: responseMessage.UserNotFound, status: false });
     }
-    const token = jwt.sign({ id: user._id }, secretKey, { expiresIn: "15d" });
-    res.json({
+    const token = createJWTToken(user._id);
+    res.status(statusCode.OK).json({
       user: user,
       status: true,
       token: token,
-      message: "User logged in successfully!",
+      message: responseMessage.LoginSuccess,
     });
   } catch (error) {
-    res.status(500).json({ message: "Server Error" });
+    res
+      .status(statusCode.InternalServerError)
+      .json({ status: false, message: responseMessage.InternalServerError });
   }
 });
 
 app.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await User.findByIdAndDelete(id);
-    res.json({ status: true, message: "User deleted successfully!" });
+    const user = await deleteUserById(id);
+    res.status(statusCode.delete).json({
+      status: true,
+      message: responseMessage.UserDeleted,
+      user: user,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server Error" });
+    res
+      .status(statusCode.InternalServerError)
+      .json({ status: false, message: responseMessage.InternalServerError });
   }
 });
 
