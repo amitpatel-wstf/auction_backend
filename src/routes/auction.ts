@@ -3,7 +3,13 @@ import Auction from "../models/Auction";
 import jwt from "jsonwebtoken";
 import Bids from "../models/bids";
 import { tokenExtractor } from "../middlewares/tokenExtractor";
-import { createAuction, createBid, getAuctions } from "../controllers/auction";
+import {
+  createAuction,
+  createBid,
+  getAuctions,
+  getBidByUserId,
+  getWinner,
+} from "../controllers/auction";
 import { responseMessage } from "../types/responseMessage";
 import { statusCode } from "../types/statusCode";
 import { auctionType, bidType } from "../types/auction";
@@ -68,13 +74,31 @@ app.post("/placebid", tokenExtractor, async (req, res) => {
   }
 });
 
+app.get("/get-winner", async (req, res) => {
+  try {
+    const winner = await getWinner();
+    if (!winner) {
+      return res
+        .status(statusCode.NotFound)
+        .json({ status: false, message: responseMessage.UserNotFound });
+    }
+    res
+      .status(statusCode.Accepted)
+      .json({ status: true, message: responseMessage.winner, winner: winner });
+  } catch (error) {
+    res
+      .status(statusCode.InternalServerError)
+      .json({ status: false, message: responseMessage.InternalServerError });
+  }
+});
+
 app.get("/bids/:id", setUserId, async (req, res) => {
   try {
     const userId = req.body.userId;
-    const bids = await Bids.find({ userId: userId });
+    const bid = await getBidByUserId(userId);
     res
       .status(statusCode.OK)
-      .json({ bids: bids, status: true, message: responseMessage.getData });
+      .json({ bid: bid, status: true, message: responseMessage.getData });
   } catch (error) {
     res
       .status(statusCode.InternalServerError)

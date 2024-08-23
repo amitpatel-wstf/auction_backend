@@ -12,5 +12,6 @@ export enum responseMessage {
   getData = "Get All the data...!",
   auctionCreated = "Auction created successfully..!",
   bidPlaced="Bid placed successfully...!",
-  invalidToken = "Invalid token...!"
+  invalidToken = "Invalid token...!",
+  winner="Get Winner...!"
 }
