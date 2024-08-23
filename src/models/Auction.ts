@@ -1,4 +1,3 @@
-// src/models/Auction.ts
 import mongoose, { Document, Schema, Model } from 'mongoose';
 
 export interface IAuction extends Document {

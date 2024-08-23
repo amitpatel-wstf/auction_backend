@@ -30,7 +30,7 @@ export async function createAuction(
   }
 }
 
-export async function createBid(
+export async function PlaceBid(
   artName: string,
   description: string,
   artist: string,

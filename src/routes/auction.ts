@@ -1,11 +1,8 @@
-import express, { NextFunction } from "express";
-import Auction from "../models/Auction";
-import jwt from "jsonwebtoken";
-import Bids from "../models/bids";
+import express from "express";
 import { tokenExtractor } from "../middlewares/tokenExtractor";
 import {
   createAuction,
-  createBid,
+  PlaceBid,
   getAuctions,
   getBidByUserId,
   getWinner,
@@ -61,7 +58,7 @@ app.post("/", async (req, res) => {
 app.post("/placebid", tokenExtractor, async (req, res) => {
   try {
     const { artName, description, currentBid, artist, id }: bidType = req.body;
-    const bid = await createBid(artName, description, artist, id, currentBid);
+    const bid = await PlaceBid(artName, description, artist, id, currentBid);
 
     res
       .status(statusCode.OK)
