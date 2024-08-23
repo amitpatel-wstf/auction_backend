@@ -1,10 +1,11 @@
 import express from "express";
 import connectDB from "../config/db";
 import dotenv from "dotenv";
+import { config } from "../config/config";
 dotenv.config();
 
 // post for running the server
-const PORT = process.env.PORT || 3001;
+const PORT = config.PORT || 3001;
 
 export default function ServerStart(app: express.Application) {
   try {
